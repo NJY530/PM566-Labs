@@ -1,6 +1,6 @@
 ---
 title: "Lab 03"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -51,19 +51,35 @@ met$elev[met$elev==9999.0] <- NA
 summary(met$elev)
 ```
 
+The highest weather station is at `r max(met$elev, na.rm = TRUE)`.
+
+Now fix the temperature!
 
 ```{r}
-met <- met[temp>-15]
-met2 <- met[order(temp)]
-head(met2)
+met <- met[temp>-15][order(temp)]
+summary(met[,.(lat, lon, wind.sp, temp, elev)])
+```
+
+## Step 4: Calculate summary statistics
+
+```{r}
+met[elev==max(elev,na.rm = TRUE)][, summary(wind.sp)]
+```
+
+```{r}
+met[elev == max(elev,na.rm = TRUE),.(
+  temp_wind = cor (temp, wind.sp, use = "complete"),
+  temp_hour = cor (temp, hour, use = "complete"),
+  temp_day = cor (temp, day, use = "complete"),
+  wind_day = cor (wind.sp, day, use = "complete"),
+  wind_hour = cor (wind.sp, hour, use = "complete")
+)]
 ```
 
 
-## Step 5: check against external data source
+## Step 7: Exploratory graphs
 
 ```{r}
-met <- met[temp>-15]
-met2 <- met[order(temp)]
-head(met2)
+hist(met$elev, breaks=100)
 ```
 
