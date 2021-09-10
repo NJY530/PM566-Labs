@@ -35,9 +35,35 @@ str(met)
 table(met$year)
 table(met$day)
 table(met$hour)
+```
+
+```{r}
 summary(met$temp)
 summary(met$elev)
 summary(met$wind.sp)
 ```
 
+Updating NAs in elevation
+
+```{r}
+met$elev[met$elev==9999.0] <- NA
+#met[elev ==9999.0, elev :=NA]
+summary(met$elev)
+```
+
+
+```{r}
+met <- met[temp>-15]
+met2 <- met[order(temp)]
+head(met2)
+```
+
+
+## Step 5: check against external data source
+
+```{r}
+met <- met[temp>-15]
+met2 <- met[order(temp)]
+head(met2)
+```
 
