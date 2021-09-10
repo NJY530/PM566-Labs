@@ -1,0 +1,43 @@
+---
+title: "Lab 03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Step 1: Read the data
+
+```{r}
+library(data.table)
+
+# only download if we haven't
+if(!file.exists("met_all.gz")) {
+  download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz", "met_all.gz", method="libcurl", timeout = 60)
+}
+met <- data.table::fread("met_all.gz")
+
+```
+
+## Step 2: Checking dimensions
+
+```{r}
+dim(met)
+head(met)
+tail(met)
+str(met)
+```
+
+## Step 3: Take closer look at key variables
+
+```{r}
+table(met$year)
+table(met$day)
+table(met$hour)
+summary(met$temp)
+summary(met$elev)
+summary(met$wind.sp)
+```
+
+
