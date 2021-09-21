@@ -140,3 +140,14 @@ leaflet(met_avg) %>%
 
 ```
 
+## 8.Use a ggplot extension
+
+```{r, cache=TRUE}
+library(gganimate)
+
+ggplot()+
+  geom_point(met[!is.na(rh) & !is.na(temp)],mapping=aes(rh,temp))+
+  labs(x="reletive height",y="temperature")+
+  transition_time(hour)
+```
+
