@@ -1,0 +1,89 @@
+---
+title: "Lab06"
+author: Jiayi Nie
+output: github_document
+always_allow_html: TRUE
+---
+
+```{r set-up}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+
+```
+
+
+```{r packages, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidytext)
+library(tidyverse)
+library(forcats)
+```
+
+## Read the data
+
+```{r get data}
+fn <- "mtsamples.csv"
+
+if(!file.exists(fn))
+  download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/00_mtsamples/mtsamples.csv", destfile = fn)
+
+mtsamples <- read.csv(fn)
+mtsamples <- as_tibble(mtsamples)
+```
+
+## Q1:How many and how are specialities distributed?
+
+```{r dis-of-specialities}
+specialties <- mtsamples %>%
+  count(medical_specialty)
+
+specialties %>%
+  arrange(desc(n)) %>%
+  top_n(15) %>%
+  knitr::kable()
+  
+```
+
+There are `r nrow(specialties)` specialties. Let's take a look at the distribution.
+
+```{r}
+ggplot(mtsamples, aes(medical_specialty))+
+  geom_histogram(stat="count") +
+  coord_flip()
+```
+
+these are not evenlt (uniformly) distributed.
+
+## Q2
+
+```{r Tokenize the the words in the transcription column, cache=TRUE}
+mtsamples %>%
+  unnest_tokens(output = word, input = transcription) %>%
+  count(word, sort = TRUE) %>%
+  top_n(20)%>%
+  ggplot(aes(n,fct_reorder(word,n)))+
+    geom_col()
+```
+
+The word "patient" is seems to be important, but we observe a lot of stopwords.
+
+## Q3
+
+```{r Redo visualization but remove stopwords before}
+mtsamples %>%
+  unnest_tokens(output = word, input = transcription) %>%
+  count(word, sort = TRUE) %>%
+  anti_join(stop_words, by= "word")%>%
+  top_n(20)%>%
+  ggplot(aes(n,fct_reorder(word,n)))+
+    geom_col()
+```
+
+looking better , but we don't like the number
+
+```{r}
+
+```
+
