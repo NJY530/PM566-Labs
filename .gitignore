@@ -7,3 +7,5 @@
 # This is data
 *.gz
 *.csv
+
+*.DS_Store

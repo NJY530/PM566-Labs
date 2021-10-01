@@ -85,6 +85,7 @@ mtsamples %>%
   unnest_tokens(output = word, input = transcription) %>%
   count(word, sort = TRUE) %>%
   anti_join(stop_words, by= "word")%>%
+  filter(!grepl("^[0-9]+$",x=word)) %>%
   top_n(20)%>%
   ggplot(aes(n,fct_reorder(word,n)))+
     geom_col()
@@ -93,3 +94,35 @@ mtsamples %>%
     ## Selecting by n
 
 ![](README_files/figure-gfm/Redo%20visualization%20but%20remove%20stopwords%20before-1.png)<!-- -->
+
+## Q4
+
+``` r
+mtsamples %>%
+  unnest_ngrams(output = bigram, input = transcription, n=2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(20)%>%
+  ggplot(aes(n,fct_reorder(bigram,n)))+
+    geom_col()
+```
+
+    ## Selecting by n
+
+![](README_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+
+``` r
+mtsamples %>%
+  unnest_ngrams(output = trigram, input = transcription, n=3) %>%
+  count(trigram, sort = TRUE) %>%
+  top_n(20)%>%
+  ggplot(aes(n,fct_reorder(trigram,n)))+
+    geom_col()
+```
+
+    ## Selecting by n
+
+![](README_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+
+Now some phrases start to show up. e.g. “tolerated the procedure”
+
+## Q5: Pick a word and count the words that appears after and before it.
