@@ -1,0 +1,211 @@
+---
+title: "Lab05"
+author: Jiayi Nie
+output: github_document
+always_allow_html: TRUE
+---
+
+```{r package}
+library(tidyverse)
+library(data.table)
+library(leaflet)
+
+```
+
+```{r read the data, cache= TRUE}
+met<- data.table::fread("../Lab04/met_all.gz")
+
+# Download the data
+stations <- fread("ftp://ftp.ncdc.noaa.gov/pub/data/noaa/isd-history.csv")
+stations[, USAF := as.integer(USAF)]
+
+# Dealing with NAs and 999999
+stations[, USAF   := fifelse(USAF == 999999, NA_integer_, USAF)]
+stations[, CTRY   := fifelse(CTRY == "", NA_character_, CTRY)]
+stations[, STATE  := fifelse(STATE == "", NA_character_, STATE)]
+
+# Selecting the three relevant columns, and keeping unique records
+stations <- unique(stations[, list(USAF, CTRY, STATE)])
+
+# Dropping NAs
+stations <- stations[!is.na(USAF)]
+
+# Removing duplicates
+stations[, n := 1:.N, by = .(USAF)]
+stations <- stations[n == 1,][, n := NULL]
+```
+
+
+merging the data
+
+```{r}
+met <- merge(
+  # Data
+  x     = met,      
+  y     = stations, 
+  # List of variables to match
+  by.x  = "USAFID",
+  by.y  = "USAF", 
+  # Which obs to keep?
+  all.x = TRUE,      
+  all.y = FALSE
+  )
+```
+
+## Question1: Representative station for the US
+
+What is the median station in terms of temperature, wind speed, and atmospheric pressure? Look for the three weather stations that best represent continental US using the quantile() function. Do these three coincide?
+
+First, generate a representative version of each station. We will use the averages (median could also be a good way to represent it, but it will depend on the case).
+
+```{r collapsing-by-station}
+station_averages <- met[,.(
+  temp      = mean(temp, na.rm = TRUE),
+  wind.sp   = mean(wind.sp, na.rm = TRUE),
+  atm.press = mean(atm.press, na.rm = TRUE),
+  lon = mean(lon, na.rm = TRUE),
+  lat = mean(lat, na.rm = TRUE)
+), by = .(USAFID)]
+```
+
+Now, we need to identify the median per variable
+
+```{r quantile}
+medians <- station_averages[,.(
+  temp_50      = quantile(temp, probs = .5, na.rm = TRUE),
+  wind.sp_50   = quantile(wind.sp, probs = .5, na.rm = TRUE),
+  atm.press_50 = quantile(atm.press, probs = .5, na.rm = TRUE)
+)]
+
+```
+
+Now we can find the stations that are the closest to these. (hint: which.min())
+
+```{r}
+station_averages[, temp_dist := abs(temp - medians$temp_50)]
+median_temp_station <- station_averages[order(temp_dist)][1]
+median_temp_station
+
+station_averages[, wind.sp_dist := abs(wind.sp - medians$wind.sp_50)]
+median_wind.sp_station <- station_averages[order(wind.sp_dist)][1]
+median_wind.sp_station
+
+station_averages[, atm.press_dist := abs(temp - medians$atm.press_50)]
+median_atm.press_station <- station_averages[order(atm.press_dist)][1]
+median_atm.press_station
+```
+
+720458,720929,722238 respectively so these stations are not coincide.
+
+## Question2: Representative station per state
+
+We first need to recover the state variable, by merging
+
+```{r}
+station_averages <- merge(
+  x = station_averages, y = stations,
+  by.x = "USAFID", by.y = "USAF",
+  all.x = TRUE, all.y = FALSE
+  )
+```
+
+Now we can compute the median per state
+
+```{r}
+station_averages[, temp_50 := quantile(temp, probs = .5, na.rm = TRUE), by = STATE]
+station_averages[, wind.sp_50 := quantile(wind.sp, probs = .5, na.rm = TRUE), by = STATE]
+station_averages[, atm.press_50 := quantile(atm.press, probs = .5, na.rm = TRUE), by = STATE]
+
+
+```
+
+Now, the euclidean distance… $\sqrt{\sum_i(x_i - y_i)^2}$
+
+```{r}
+station_averages[, eudist := sqrt(
+  (temp - temp_50)^2 + (wind.sp - wind.sp_50)^2 + (atm.press - atm.press_50)^2
+  )]
+station_averages_state <- station_averages[ , .SD[which.min(eudist)], by = STATE]
+
+station_averages_state
+
+```
+
+
+## Question 3: In the middle?
+
+```{r}
+#calculate median for lon and lat per state
+station_averages[, lon_50 := quantile(lon, probs = .5, na.rm = TRUE), by = STATE]
+station_averages[, lat_50 := quantile(lat, probs = .5, na.rm = TRUE), by = STATE]
+
+#now calculate the distance
+station_averages[, latlon_dis := sqrt(
+  (lat-lat_50)^2 + (lon - lon_50)^2
+)]
+
+midpoint<- station_averages[, .SD[which.min(latlon_dis)],by =STATE]
+
+midpoint
+
+#combine the dataset
+
+c_state <- rbind(station_averages_state, midpoint, fill = TRUE)
+
+```
+
+```{r}
+library(leaflet)
+
+leaflet(c_state) %>%
+  addProviderTiles('CartoDB.Positron') %>%
+  addCircles(
+    lat = ~lat, lng = ~lon, 
+    color = "lightgreen",
+    opacity = 1,
+    fillOpacity = 1,
+    radius=100
+)
+```
+
+## Question4: Means of means
+
+Going back to the met dataset.
+
+```{r}
+met[, state_temp := mean(temp, na.rm = TRUE), by = STATE]
+met[, state_wind.sp := mean(wind.sp, na.rm = TRUE), by = STATE]
+met[, state_atm.press := mean(atm.press, na.rm = TRUE), by = STATE]
+
+met[, temp_cat := fifelse(
+  state_temp < 20, "low-temp", 
+  fifelse(state_temp < 25, "mid-temp", "high-temp"))
+  ]
+
+```
+
+Let’s make sure that we don’t have NAs
+
+```{r}
+table(met$temp_cat, useNA = "always")
+
+```
+
+Now, let’s summarize
+
+```{r}
+tab <- met[, .(
+  N_entries  = .N,
+  N_stations = length(unique(USAFID)),
+  avg_temp = mean(state_temp),
+  avg_wind.sp = mean(state_wind.sp),
+  avg_atm.press = mean(state_atm.press)
+), by = temp_cat]
+
+knitr::kable(tab)
+
+```
+
+
+
+
