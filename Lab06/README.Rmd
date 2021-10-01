@@ -1,13 +1,16 @@
 ---
 title: "Lab06"
 author: Jiayi Nie
-output: github_document
+output: 
+  github_document:
+  html_document:
+    html_preview:false
+  
 always_allow_html: TRUE
 ---
 
-```{r set-up}
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
 options(repos = c(CRAN = "http://cran.rstudio.com"))
 
 ```
@@ -71,7 +74,7 @@ The word "patient" is seems to be important, but we observe a lot of stopwords.
 
 ## Q3
 
-```{r Redo visualization but remove stopwords before}
+```{r Redo visualization but remove stopwords before, cache=TRUE}
 mtsamples %>%
   unnest_tokens(output = word, input = transcription) %>%
   count(word, sort = TRUE) %>%
@@ -85,7 +88,7 @@ mtsamples %>%
 
 ## Q4
 
-```{r, cache = TRUE}
+```{r, cache = TRUE, cache=TRUE}
 mtsamples %>%
   unnest_ngrams(output = bigram, input = transcription, n=2) %>%
   count(bigram, sort = TRUE) %>%
@@ -105,7 +108,38 @@ Now some phrases start to show up. e.g. "tolerated the procedure "
 
 ## Q5: Pick a word and count the words that appears after and before it.
 
-```{r}
+```{r patient, cache= TRUE}
+bigrams <- mtsamples %>%
+  unnest_ngrams(output = bigram, input = transcription, n=2) %>%
+  separate(bigram, into = c("word1", "word2"), sep = " ") %>%
+  filter((word1 =="patient") | (word2 =="patient"))
 
+bigrams %>%
+  filter(word1 == "patient")%>%
+  select(word1,word2) %>%
+  count(word2, sort = TRUE)
+  
+bigrams %>%
+  filter(word2 == "patient")%>%
+  select(word1,word2)%>%
+  count(word1, sort = TRUE)
+```
+
+Since we are looking ar single word again, it's good idea to remove the stopwords and numbers.
+
+```{r}
+bigrams %>%
+  filter(word1 == "patient") %>%
+  filter(!(word2 %in% stop_words$word) & !grepl("^[0-9]+$",word2))%>%
+  count(word2, sort = TRUE)%>%
+  top_n(10)%>%
+  knitr::kable()
+
+bigrams %>%
+  filter(word2 == "patient") %>%
+  filter(!(word1 %in% stop_words$word) & !grepl("^[0-9]+$",word1))%>%
+  count(word1, sort = TRUE)%>%
+  top_n(10)%>%
+  knitr::kable()
 ```
 
