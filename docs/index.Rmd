@@ -1,0 +1,127 @@
+---
+title: "Lab 07"
+author: Jiayi Nie
+date: 10/08/2021
+output:
+  github_document: 
+    html_preview: false
+  html_document: default
+  word_document: default
+always_allow_html: true
+---
+
+```{r packages}
+library(tidyverse)
+library(tidytext)
+
+```
+
+
+## Q1： How many sars-cov-2 papers?
+
+```{r how-many}
+# Downloading the website
+website <- xml2::read_html("https://pubmed.ncbi.nlm.nih.gov/?term=sars-cov-2")
+
+# Finding the counts
+counts <- xml2::xml_find_first(website, "/html/body/main/div[9]/div[2]/div[2]/div[1]/span")
+
+# Turning it into text
+counts <- as.character(counts)
+
+# Extracting the data using regex
+stringr::str_extract(counts, "[0-9,]+")
+
+```
+
+
+## Q2： Academic publications on COVID19 and Hawaii
+
+```{r}
+library(httr)
+query_ids <- GET(
+  url   = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+  query = list(
+    db = "pubmed",
+    term = "covid19 hawaii",
+    retmax = 1000
+    )
+)
+
+# Extracting the content of the response of GET
+ids <- httr::content(query_ids)
+```
+
+## Q3：Get details about the articles
+
+```{r}
+# Turn the result into a character vector
+ids <- as.character(ids)
+
+# Find all the ids 
+ids <- stringr::str_extract_all(ids, "<Id>[[:digit:]]+</Id>")[[1]]
+
+# Remove all the leading and trailing <Id> </Id>. Make use of "|"
+ids <- stringr::str_remove_all(ids, "<Id>|</Id>")
+
+publications <- GET(
+  url   = "https://eutils.ncbi.nlm.nih.gov/",
+  path  = "entrez/eutils/efetch.fcgi",
+  query = list(
+    db = "pubmed",
+    id = I(paste(ids, collapse=",")),
+    retmax = 1000,
+    rettype = "abstract"
+    )
+)
+
+# Turning the output into character vector
+publications <- httr::content(publications)
+publications_txt <- as.character(publications)
+```
+
+
+## Q4 Distribution of universities, schools, and departments
+
+```{r}
+institution <- str_extract_all(
+  tolower(publications_txt),
+  "university\\sof\\s+(southern|the|new|northern)?\\s*[[:alpha:]-]+|[[:alpha:]-]+\\s+insititute\\sof\\s+[[:alpha:]-]+"
+  ) 
+institution <- unlist(institution)
+table(institution)
+```
+
+## Q5： Form a database
+
+
+```{r}
+pub_char_list <- xml2::xml_children(publications)
+pub_char_list <- sapply(pub_char_list, as.character)
+```
+
+Geitting the abstracts
+
+```{r}
+abstracts <- str_extract(pub_char_list, "<Abstract>[[:print:][:space:]]+</Abstract>")
+abstracts <- str_remove_all(abstracts, "</?[[:alnum:]- =\"]+>") # '</?[[:alnum:]- ="]+>'
+abstracts <- str_replace_all(abstracts, "[[:space:]]+", " ")
+```
+
+```{r}
+titles <- str_extract(pub_char_list, "<ArticleTitle>[[:print:][:space:]]+</ArticleTitle>")
+titles <- str_remove_all(titles, "</?[[:alnum:]- =\"]+>")
+```
+
+Finally, the dataset
+
+```{r}
+database <- data.frame(
+  PubMedId = ids,
+  Title    = titles,
+  Abstract = abstracts
+)
+knitr::kable(database[1:20,], caption = "Some papers about Covid19 and Hawaii")
+```
+
+
