@@ -58,9 +58,198 @@ dbGetQuery(con, "PRAGMA table_info(actor)")
 
 ## Exercise 1
 
+Using the LIMIT clause (`head()` in R) to just show the first 5
+
 ```{r}
+dbGetQuery(con, "
+/* Adding a comment */
+SELECT actor_id, first_name, last_name
+           FROM actor /* Can also add comment
+           using multiple line*/
+           ORDER by last_name, first_name
+           LIMIT 5")
+```
+
+
+## Exercise2
+
+```{r}
+dbGetQuery(con, "SELECT actor_id, first_name, last_name
+           FROM actor 
+           WHERE last_name in ('WILLIAMS', 'DAVIS') "
+           )
+         
+```
+
+
+## Exercise3
+
+```{r}
+dbGetQuery(con, "PRAGMA table_info(rental)")
 
 ```
+
+
+```{r}
+dbGetQuery(con," 
+SELECT DISTINCT customer_id 
+FROM rental
+WHERE date(rental_date) = '2005-07-05' LIMIT 5")
+```
+
+
+## Exercise4
+
+```{r}
+dbGetQuery(con, "PRAGMA table_info(payment)")
+```
+
+
+### 4.1
+
+```{r}
+q <- dbSendQuery(con, "
+SELECT *
+FROM payment
+WHERE amount IN (1.99, 7.99, 9.99)"
+)
+dbFetch(q, n = 10)
+```
+
+get second 10
+
+```{r}
+dbFetch(q, n = 10)
+```
+
+```{r}
+dbClearResult(q)
+```
+
+
+### 4.2
+
+```{r}
+dbGetQuery(con, "
+SELECT *
+FROM payment
+WHERE amount > 5 LIMIT 5")
+```
+
+
+Bonus: Count how many are
+
+```{r}
+dbGetQuery(con, "
+SELECT COUNT(*)
+FROM payment
+WHERE amount > 5")
+```
+
+Counting per staff_id
+
+```{r}
+dbGetQuery(con, "
+SELECT staff_id, COUNT(*) AS N
+FROM payment
+/* GROUP BY goes AFTER WHERE*/
+WHERE amount > 5
+GROUP BY staff_id
+")
+```
+
+## Exercise5
+
+```{r}
+dbGetQuery(con, "
+SELECT p.payment_id, p.amount
+FROM payment AS p
+  INNER JOIN customer AS c ON p.customer_id = c.customer_id
+WHERE c.last_name = 'DAVIS'")
+```
+
+## Exercise6
+
+### 6.1
+
+```{r}
+dbGetQuery(con, "
+SELECT customer_id, COUNT(*) AS 'N Rentals'
+FROM rental GROUP BY customer_id
+LIMIT 5
+")
+```
+
+### 6.2 
+
+```{r}
+dbGetQuery(con, "
+SELECT customer_id, COUNT(*) AS 'N Rentals'
+FROM rental GROUP BY customer_id
+/*
+This is equivalent to
+ORDER BY -`N Rentals` LIMIT 5
+*/
+ORDER BY `N Rentals` DESC LIMIT 5
+")
+```
+
+### 6.3 
+
+```{r}
+dbGetQuery(con, "
+SELECT customer_id, COUNT(*) AS 'N Rentals'
+FROM rental GROUP BY customer_id
+HAVING `N Rentals` >= 40
+ORDER BY `N Rentals` 
+")
+```
+
+
+## Exercise7
+
+```{r}
+dbGetQuery(con, "
+SELECT 
+  MAX(amount) AS `max`,
+  MIN(amount) AS `min`,
+  AVG(amount) AS `avg`,
+  SUM(amount) AS `sum`
+FROM payment")
+
+```
+
+### 7.1 
+
+```{r}
+dbGetQuery(con, "
+SELECT 
+  customer_id,
+  MAX(amount) AS `max`,
+  MIN(amount) AS `min`,
+  AVG(amount) AS `avg`,
+  SUM(amount) AS `sum`
+FROM payment GROUP BY customer_id
+LIMIT 5")
+```
+
+### 7.2 
+
+```{r}
+dbGetQuery(con, "
+SELECT 
+  customer_id,
+  COUNT(*) AS N,
+  MAX(amount) AS `max`,
+  MIN(amount) AS `min`,
+  AVG(amount) AS `avg`,
+  SUM(amount) AS `sum`
+FROM payment
+GROUP BY customer_id
+HAVING COUNT(*) > 5
+")
+```
+
 
 
 ```{r cleaning}
